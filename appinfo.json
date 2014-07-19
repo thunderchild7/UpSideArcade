@@ -1,0 +1,126 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "oliverbowe",
+    "longName": "Up Side Arcade",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/num_black_down_9.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_9",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_6.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_6",
+                "type": "png"
+            },
+            {
+                "file": "images/num_9.png",
+                "name": "IMAGE_NUM_BLACK_UP_9",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_8.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_8",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_5.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_5",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_0.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_0",
+                "type": "png"
+            },
+            {
+                "file": "images/big-bariol-flip_icon.png",
+                "menuIcon": true,
+                "name": "IMAGE_MENU_ICON",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_4.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_4",
+                "type": "png"
+            },
+            {
+                "file": "images/num_4.png",
+                "name": "IMAGE_NUM_BLACK_UP_4",
+                "type": "png"
+            },
+            {
+                "file": "images/num_8.png",
+                "name": "IMAGE_NUM_BLACK_UP_8",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_7.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_7",
+                "type": "png"
+            },
+            {
+                "file": "images/num_7.png",
+                "name": "IMAGE_NUM_BLACK_UP_7",
+                "type": "png"
+            },
+            {
+                "file": "images/num_6.png",
+                "name": "IMAGE_NUM_BLACK_UP_6",
+                "type": "png"
+            },
+            {
+                "file": "images/num_5.png",
+                "name": "IMAGE_NUM_BLACK_UP_5",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_3.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_3",
+                "type": "png"
+            },
+            {
+                "file": "images/num_3.png",
+                "name": "IMAGE_NUM_BLACK_UP_3",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_1.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_1",
+                "type": "png"
+            },
+            {
+                "file": "images/num_1.png",
+                "name": "IMAGE_NUM_BLACK_UP_1",
+                "type": "png"
+            },
+            {
+                "file": "images/num_0.png",
+                "name": "IMAGE_NUM_BLACK_UP_0",
+                "type": "png"
+            },
+            {
+                "file": "images/num_black_down_2.png",
+                "name": "IMAGE_NUM_BLACK_DOWN_2",
+                "type": "png"
+            },
+            {
+                "file": "images/num_2.png",
+                "name": "IMAGE_NUM_BLACK_UP_2",
+                "type": "png"
+            }
+        ]
+    },
+    "shortName": "Up Side Arcade",
+    "uuid": "b64b4470-ce6d-11e3-9c1a-0800200c9a66",
+    "versionCode": 2,
+    "versionLabel": "1.0.5",
+    "watchapp": {
+        "watchface": true
+    }
+}
