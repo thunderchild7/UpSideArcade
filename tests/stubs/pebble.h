@@ -13,12 +13,12 @@ typedef struct Layer Layer;
 typedef struct AppTimer AppTimer;
 typedef struct GBitmap GBitmap;
 typedef struct BitmapLayer BitmapLayer;
-typedef struct InverterLayer InverterLayer;
 
 typedef struct { int16_t x; int16_t y; } GPoint;
 typedef struct { int16_t w; int16_t h; } GSize;
 typedef struct { GPoint origin; GSize size; } GRect;
 
+#define GPoint(x, y) ((GPoint){(x), (y)})
 #define GRect(x, y, w, h) ((GRect){{(x), (y)}, {(w), (h)}})
 
 typedef struct {
@@ -42,26 +42,24 @@ typedef enum {
 #define APP_LOG_LEVEL_DEBUG 0
 #define APP_LOG(level, fmt, ...) ((void)0)
 
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_0 100
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_1 101
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_2 102
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_3 103
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_4 104
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_5 105
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_6 106
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_7 107
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_8 108
-#define RESOURCE_ID_IMAGE_NUM_BLACK_UP_9 109
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_0 200
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_1 201
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_2 202
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_3 203
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_4 204
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_5 205
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_6 206
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_7 207
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_8 208
-#define RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_9 209
+#define RESOURCE_ID_IMAGE_NUM_0 100
+#define RESOURCE_ID_IMAGE_NUM_1 101
+#define RESOURCE_ID_IMAGE_NUM_2 102
+#define RESOURCE_ID_IMAGE_NUM_3 103
+#define RESOURCE_ID_IMAGE_NUM_4 104
+#define RESOURCE_ID_IMAGE_NUM_5 105
+#define RESOURCE_ID_IMAGE_NUM_6 106
+#define RESOURCE_ID_IMAGE_NUM_7 107
+#define RESOURCE_ID_IMAGE_NUM_8 108
+#define RESOURCE_ID_IMAGE_NUM_9 109
+
+typedef enum {
+  GColorClear = 0,
+  GColorBlack = 1,
+  GColorWhite = 2
+} GColor;
+
+typedef struct RotBitmapLayer RotBitmapLayer;
 
 Window *window_create(void);
 void window_stack_push(Window *window, bool animated);
@@ -69,12 +67,19 @@ void window_destroy(Window *window);
 Layer *window_get_root_layer(Window *window);
 
 void layer_add_child(Layer *parent, Layer *child);
+void layer_set_frame(Layer *layer, GRect frame);
+GRect layer_get_frame(const Layer *layer);
+void layer_set_bounds(Layer *layer, GRect bounds);
 void layer_mark_dirty(Layer *layer);
 void layer_remove_from_parent(Layer *child);
 void layer_destroy(Layer *layer);
 
-InverterLayer *inverter_layer_create(GRect frame);
-Layer *inverter_layer_get_layer(InverterLayer *inverter);
+RotBitmapLayer *rot_bitmap_layer_create(GBitmap *bitmap);
+void rot_bitmap_layer_destroy(RotBitmapLayer *bitmap_layer);
+void rot_bitmap_layer_set_angle(RotBitmapLayer *bitmap_layer, int32_t angle);
+void rot_bitmap_set_src_ic(RotBitmapLayer *bitmap_layer, GPoint ic);
+void rot_bitmap_layer_set_corner_clip_color(RotBitmapLayer *bitmap_layer, GColor color);
+Layer *rot_bitmap_layer_get_layer(RotBitmapLayer *bitmap_layer);
 
 GBitmap *gbitmap_create_with_resource(uint32_t resource_id);
 void gbitmap_destroy(GBitmap *bitmap);
@@ -94,6 +99,7 @@ bool clock_is_24h_style(void);
 typedef void (*TickHandler)(struct tm *tick_time, TimeUnits units_changed);
 void tick_timer_service_subscribe(TimeUnits units, TickHandler handler);
 void tick_timer_service_unsubscribe(void);
+void vibes_short_pulse(void);
 
 void app_event_loop(void);
 
