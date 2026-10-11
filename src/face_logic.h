@@ -64,13 +64,20 @@ void face_compose_time(int slots[FACE_SLOT_COUNT], unsigned short hour,
  */
 int face_orientation_from_accel(int x, int y, int z, int current_orientation);
 
-/* Resource column: 0 is upright, 1 is the 180-degree glyph. */
-int face_digit_variant(int orientation);
+/* Quarter-turns clockwise for the digit artwork. 0 is upright, 2 is a half turn. */
+int face_rotation_quarters(int orientation);
 
 /* Redraw on a new minute or when the watch flips. Seconds alone do not. */
 bool face_should_refresh(int previous_orientation, int orientation, bool minute_changed);
 
-/* Skip a bitmap reload when the slot already shows the wanted glyph. */
-bool face_slot_needs_redraw(int loaded_digit, int wanted_digit, bool orientation_changed);
+/*
+ * Short buzz on clock minutes that are a multiple of vibe_minutes.
+ * An interval of 5 buzzes at :00, :05, :10, and so on. Zero and negative
+ * intervals stay quiet. Minutes outside 0..59 stay quiet.
+ */
+bool face_should_vibe(int minute_of_hour, int vibe_minutes);
+
+/* Reload a slot only when its digit changes. A flip reuses the bitmap and rotates it. */
+bool face_slot_needs_redraw(int loaded_digit, int wanted_digit);
 
 #endif

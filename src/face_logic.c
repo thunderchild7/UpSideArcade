@@ -104,9 +104,9 @@ int face_orientation_from_accel(int x, int y, int z, int current_orientation) {
 	return held;
 }
 
-int face_digit_variant(int orientation) {
+int face_rotation_quarters(int orientation) {
 	if (orientation == UIInterfaceOrientationPortraitUpsideDown) {
-		return 1;
+		return 2;
 	}
 	return 0;
 }
@@ -115,12 +115,19 @@ bool face_should_refresh(int previous_orientation, int orientation, bool minute_
 	return minute_changed || previous_orientation != orientation;
 }
 
-bool face_slot_needs_redraw(int loaded_digit, int wanted_digit, bool orientation_changed) {
-	if (wanted_digit == FACE_DIGIT_UNCHANGED) {
+bool face_should_vibe(int minute_of_hour, int vibe_minutes) {
+	if (vibe_minutes <= 0) {
 		return false;
 	}
-	if (orientation_changed) {
-		return true;
+	if (minute_of_hour < 0 || minute_of_hour > 59) {
+		return false;
+	}
+	return (minute_of_hour % vibe_minutes) == 0;
+}
+
+bool face_slot_needs_redraw(int loaded_digit, int wanted_digit) {
+	if (wanted_digit == FACE_DIGIT_UNCHANGED) {
+		return false;
 	}
 	return loaded_digit != wanted_digit;
 }

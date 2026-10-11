@@ -10,8 +10,7 @@ static Window *window;
 static AppTimer *timer;
 
 static GBitmap *images[TOTAL_IMAGE_SLOTS];
-static BitmapLayer *image_layers[TOTAL_IMAGE_SLOTS];
-static InverterLayer* inverter_layer;
+static RotBitmapLayer *image_layers[TOTAL_IMAGE_SLOTS];
 
 #define EMPTY_SLOT -1
 
@@ -20,51 +19,46 @@ static int image_slot_state[TOTAL_IMAGE_SLOTS] = {EMPTY_SLOT, EMPTY_SLOT, EMPTY_
 static int deviceOrientation;
 static int drawn_orientation = -1;
 
-static int mInvert = 1;			// Invert colours (0/1)
-static int mVibeMinutes = 0;	// Vibrate every X minutes
+/* Minutes between short bursts, aligned to the hour. 0 turns them off. */
+static int mVibeMinutes = 5;
 
-#define NUMBER_OF_IMAGES 1
-	const int IMAGE_RESOURCE_BLACK_IDS[10][2] = {
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_0,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_0
-},
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_1,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_1
-},
-	{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_2,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_2
-},
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_3,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_3
-},
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_4,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_4
-},
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_5,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_5
-},
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_6,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_6
-},
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_7,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_7
-},
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_8,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_8
-},
-{
-	RESOURCE_ID_IMAGE_NUM_BLACK_UP_9,RESOURCE_ID_IMAGE_NUM_BLACK_DOWN_9
-}
+static const uint32_t DIGIT_RESOURCE_IDS[10] = {
+	RESOURCE_ID_IMAGE_NUM_0,
+	RESOURCE_ID_IMAGE_NUM_1,
+	RESOURCE_ID_IMAGE_NUM_2,
+	RESOURCE_ID_IMAGE_NUM_3,
+	RESOURCE_ID_IMAGE_NUM_4,
+	RESOURCE_ID_IMAGE_NUM_5,
+	RESOURCE_ID_IMAGE_NUM_6,
+	RESOURCE_ID_IMAGE_NUM_7,
+	RESOURCE_ID_IMAGE_NUM_8,
+	RESOURCE_ID_IMAGE_NUM_9
 };
 
-static void set_invert() {
-    if (!inverter_layer) {
-		inverter_layer = inverter_layer_create(GRect(0, 0, 144, 168));
-		layer_add_child(window_get_root_layer(window), inverter_layer_get_layer(inverter_layer));
-		layer_mark_dirty(inverter_layer_get_layer(inverter_layer));
-    }
+static int32_t digit_rotation_angle(int orientation) {
+	return (int32_t)face_rotation_quarters(orientation) * (TRIG_MAX_ANGLE / 4);
 }
-  
+
+/* Basalt's pebble.h defines rot_bitmap_layer_get_layer() as 0. The layer
+   object is the first field, same as TextLayer and the other layer types. */
+static Layer *rot_layer_as_layer(RotBitmapLayer *rot_layer) {
+	return (Layer *)rot_layer;
+}
+
+/* set_src_ic grows the layer so the bitmap can spin. Keep that drawing
+   centered, and show only the slot, or the digit sits down and to the right. */
+static void place_rot_layer_in_slot(RotBitmapLayer *rot_layer, int slot) {
+	Layer *layer = rot_layer_as_layer(rot_layer);
+	GRect fitted = layer_get_frame(layer);
+	FaceRect slot_frame = face_frame_for_slot(slot);
+
+	layer_set_frame(layer, GRect(slot_frame.x, slot_frame.y, slot_frame.w, slot_frame.h));
+	/* The rotation center stays put when the frame shrinks, so look up-left. */
+	layer_set_bounds(layer, GRect((slot_frame.w - fitted.size.w) / 2,
+	                               (slot_frame.h - fitted.size.h) / 2,
+	                               slot_frame.w, slot_frame.h));
+}
+
 static void load_digit_image_into_slot(int islot_number,int vdeviceOrientation, int digit_value) {
   /*
 
@@ -92,22 +86,17 @@ static void load_digit_image_into_slot(int islot_number,int vdeviceOrientation, 
   }
 
   image_slot_state[nslot_number] = digit_value;
-//	if (mInvert){
-//  images[slot_number] = gbitmap_create_with_resource(IMAGE_RESOURCE_WHITE_IDS[digit_value]);/
-//}
-//	if (!mInvert){
-   images[nslot_number] = gbitmap_create_with_resource(
-       IMAGE_RESOURCE_BLACK_IDS[digit_value][face_digit_variant(vdeviceOrientation)]);
-//	};
-	
-  FaceRect slot_frame = face_frame_for_slot(islot_number);
-  GRect frame = GRect(slot_frame.x, slot_frame.y, slot_frame.w, slot_frame.h);
+  images[nslot_number] = gbitmap_create_with_resource(DIGIT_RESOURCE_IDS[digit_value]);
 
-  BitmapLayer *bitmap_layer = bitmap_layer_create(frame);
-  image_layers[nslot_number] = bitmap_layer;
-  bitmap_layer_set_bitmap(bitmap_layer, images[nslot_number]);
-  Layer *window_layer = window_get_root_layer(window);
-  layer_add_child(window_layer, bitmap_layer_get_layer(bitmap_layer));
+  RotBitmapLayer *rot_layer = rot_bitmap_layer_create(images[nslot_number]);
+  image_layers[nslot_number] = rot_layer;
+  /* 72 and 76 are even, so the center stays on a pixel boundary at 180 degrees. */
+  rot_bitmap_set_src_ic(rot_layer, GPoint(TIME_IMAGE_WIDTH / 2, TIME_IMAGE_HEIGHT / 2));
+  rot_bitmap_layer_set_angle(rot_layer, digit_rotation_angle(vdeviceOrientation));
+  rot_bitmap_layer_set_corner_clip_color(rot_layer, GColorWhite);
+
+  place_rot_layer_in_slot(rot_layer, islot_number);
+  layer_add_child(window_get_root_layer(window), rot_layer_as_layer(rot_layer));
 }
 
 static void unload_digit_image_from_slot(int slot_number) {
@@ -123,9 +112,11 @@ static void unload_digit_image_from_slot(int slot_number) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "unload_digit_image_from_slot! %d ", slot_number);
 
   if (image_slot_state[slot_number] != EMPTY_SLOT) {
-    layer_remove_from_parent(bitmap_layer_get_layer(image_layers[slot_number]));
-    bitmap_layer_destroy(image_layers[slot_number]);
+    layer_remove_from_parent(rot_layer_as_layer(image_layers[slot_number]));
+    rot_bitmap_layer_destroy(image_layers[slot_number]);
+    image_layers[slot_number] = NULL;
     gbitmap_destroy(images[slot_number]);
+    images[slot_number] = NULL;
     image_slot_state[slot_number] = EMPTY_SLOT;
   }
 
@@ -134,7 +125,14 @@ static void unload_digit_image_from_slot(int slot_number) {
 static void apply_face_slots(const int slots[FACE_SLOT_COUNT]) {
   bool orientation_changed = (drawn_orientation != deviceOrientation);
   for (int slot = 0; slot < FACE_SLOT_COUNT; slot++) {
-    if (!face_slot_needs_redraw(image_slot_state[slot], slots[slot], orientation_changed)) {
+    if (slots[slot] == FACE_DIGIT_UNCHANGED) {
+      continue;
+    }
+    if (!face_slot_needs_redraw(image_slot_state[slot], slots[slot])) {
+      if (orientation_changed && image_layers[slot] != NULL) {
+        rot_bitmap_layer_set_angle(image_layers[slot], digit_rotation_angle(deviceOrientation));
+        layer_mark_dirty(rot_layer_as_layer(image_layers[slot]));
+      }
       continue;
     }
     unload_digit_image_from_slot(slot);
@@ -160,8 +158,6 @@ static void display_time(struct tm* pbltime) {
                     (unsigned short)pbltime->tm_min, deviceOrientation,
                     clock_is_24h_style());
   apply_face_slots(slots);
-  //set_invert();
-
 }
 
 static void update_orientation_from_accel(void) {
@@ -176,11 +172,15 @@ static void update_orientation_from_accel(void) {
 
 static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   int previous_orientation = deviceOrientation;
+  bool minute_changed = (units_changed & MINUTE_UNIT) != 0;
 
   update_orientation_from_accel();
-  if (face_should_refresh(previous_orientation, deviceOrientation,
-                          (units_changed & MINUTE_UNIT) != 0)) {
+  if (face_should_refresh(previous_orientation, deviceOrientation, minute_changed)) {
     display_time(tick_time);
+  }
+  if (minute_changed && tick_time != NULL &&
+      face_should_vibe(tick_time->tm_min, mVibeMinutes)) {
+    vibes_short_pulse();
   }
 }
 

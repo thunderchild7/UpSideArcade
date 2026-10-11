@@ -265,22 +265,41 @@ static void test_redraw_policy(void) {
 			face_should_refresh(portrait, upside_down, false), 1);
 
 	expect_int("an unchanged digit stays",
-			face_slot_needs_redraw(5, 5, false), 0);
+			face_slot_needs_redraw(5, 5), 0);
 	expect_int("a changed digit reloads",
-			face_slot_needs_redraw(5, 6, false), 1);
-	expect_int("a flip reloads the same digit",
-			face_slot_needs_redraw(5, 5, true), 1);
+			face_slot_needs_redraw(5, 6), 1);
+	expect_int("a flip keeps the loaded digit",
+			face_slot_needs_redraw(5, 5), 0);
 	expect_int("a blank slot that stays blank does not reload",
-			face_slot_needs_redraw(FACE_DIGIT_BLANK, FACE_DIGIT_BLANK, false), 0);
+			face_slot_needs_redraw(FACE_DIGIT_BLANK, FACE_DIGIT_BLANK), 0);
 	expect_int("a slot this pass does not own is left alone",
-			face_slot_needs_redraw(5, FACE_DIGIT_UNCHANGED, true), 0);
+			face_slot_needs_redraw(5, FACE_DIGIT_UNCHANGED), 0);
 
-	expect_int("portrait uses the upright glyph",
-			face_digit_variant(portrait), 0);
-	expect_int("upside down uses the rotated glyph",
-			face_digit_variant(upside_down), 1);
-	expect_int("landscape does not index past the two glyphs",
-			face_digit_variant(UIInterfaceOrientationLandscapeRight), 0);
+	expect_int("portrait leaves the digit upright",
+			face_rotation_quarters(portrait), 0);
+	expect_int("upside down is a half turn",
+			face_rotation_quarters(upside_down), 2);
+	expect_int("landscape leaves the digit upright",
+			face_rotation_quarters(UIInterfaceOrientationLandscapeRight), 0);
+}
+
+static void test_vibe(void) {
+	int minute;
+
+	for (minute = 0; minute < 60; minute++) {
+		char name[64];
+		int want = (minute % 5) == 0;
+
+		snprintf(name, sizeof name, "five minute burst at minute %d", minute);
+		expect_int(name, face_should_vibe(minute, 5), want);
+	}
+	expect_int("zero minutes disables the burst", face_should_vibe(0, 0), 0);
+	expect_int("a negative interval disables the burst", face_should_vibe(10, -5), 0);
+	expect_int("every minute includes minute 1", face_should_vibe(1, 1), 1);
+	expect_int("quarter hour at minute 45", face_should_vibe(45, 15), 1);
+	expect_int("quarter hour skips minute 5", face_should_vibe(5, 15), 0);
+	expect_int("a minute past 59 does not buzz", face_should_vibe(60, 5), 0);
+	expect_int("a negative minute does not buzz", face_should_vibe(-1, 5), 0);
 }
 
 int main(void) {
@@ -291,6 +310,7 @@ int main(void) {
 	test_compose_time();
 	test_orientation();
 	test_redraw_policy();
+	test_vibe();
 
 	if (failures != 0) {
 		fprintf(stderr, "%d of %d checks failed\n", failures, tests_run);
