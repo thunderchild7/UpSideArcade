@@ -1,24 +1,12 @@
 
 
 #include "pebble.h"
-#include <math.h>
-	
-#define TOTAL_IMAGE_SLOTS 4
+#include "face_logic.h"
 
-	// Magic numbers
-#define SCREEN_WIDTH        144
-#define SCREEN_HEIGHT       168
+#define TOTAL_IMAGE_SLOTS FACE_SLOT_COUNT
 
-#define TIME_IMAGE_WIDTH    72
-#define TIME_IMAGE_HEIGHT   76
-
-
-#define MARGIN              1
-#define TIME_SLOT_SPACE     2
-	
 static Window *window;
 
-static Layer *layer;
 static AppTimer *timer;
 
 static GBitmap *images[TOTAL_IMAGE_SLOTS];
@@ -30,6 +18,7 @@ static InverterLayer* inverter_layer;
 static int image_slot_state[TOTAL_IMAGE_SLOTS] = {EMPTY_SLOT, EMPTY_SLOT, EMPTY_SLOT, EMPTY_SLOT};
 
 static int deviceOrientation;
+static int drawn_orientation = -1;
 
 static int mInvert = 1;			// Invert colours (0/1)
 static int mVibeMinutes = 0;	// Vibrate every X minutes
@@ -68,13 +57,6 @@ static int mVibeMinutes = 0;	// Vibrate every X minutes
 }
 };
 
-enum {
-	UIInterfaceOrientationPortrait = 0,
-	UIInterfaceOrientationPortraitUpsideDown = 1,
-	UIInterfaceOrientationLandscapeRight = 2,
-	UIInterfaceOrientationLandscapeLeft = 3
-};
-
 static void set_invert() {
     if (!inverter_layer) {
 		inverter_layer = inverter_layer_create(GRect(0, 0, 144, 168));
@@ -83,13 +65,6 @@ static void set_invert() {
     }
 }
   
-GRect frame_for_time_slot(int islot_number) {
-  int x = (islot_number % 2) * (TIME_IMAGE_WIDTH );
-  int y = MARGIN + (islot_number / 2) * (TIME_IMAGE_HEIGHT + TIME_SLOT_SPACE);
-
-  return GRect(x, y, TIME_IMAGE_WIDTH, TIME_IMAGE_HEIGHT);
-}
-
 static void load_digit_image_into_slot(int islot_number,int vdeviceOrientation, int digit_value) {
   /*
 
@@ -121,11 +96,13 @@ static void load_digit_image_into_slot(int islot_number,int vdeviceOrientation, 
 //  images[slot_number] = gbitmap_create_with_resource(IMAGE_RESOURCE_WHITE_IDS[digit_value]);/
 //}
 //	if (!mInvert){
-   images[nslot_number] = gbitmap_create_with_resource(IMAGE_RESOURCE_BLACK_IDS[digit_value][vdeviceOrientation]);
+   images[nslot_number] = gbitmap_create_with_resource(
+       IMAGE_RESOURCE_BLACK_IDS[digit_value][face_digit_variant(vdeviceOrientation)]);
 //	};
 	
-  GRect frame = frame_for_time_slot(islot_number);
-	
+  FaceRect slot_frame = face_frame_for_slot(islot_number);
+  GRect frame = GRect(slot_frame.x, slot_frame.y, slot_frame.w, slot_frame.h);
+
   BitmapLayer *bitmap_layer = bitmap_layer_create(frame);
   image_layers[nslot_number] = bitmap_layer;
   bitmap_layer_set_bitmap(bitmap_layer, images[nslot_number]);
@@ -154,139 +131,57 @@ static void unload_digit_image_from_slot(int slot_number) {
 
 }
 
-static void display_value(unsigned short value, unsigned short row_number, bool show_first_leading_zero) {
-  /*
-
-     Displays a numeric value between 0 and 99 on screen.
-
-     Rows are ordered on screen as:
-
-       Row 0
-       Row 1
-
-     Includes optional blanking of first leading zero,
-     i.e. displays ' 0' rather than '00'.
-
-   */
-  value = value % 100; // Maximum of two digits per row.
-
-  if (deviceOrientation == UIInterfaceOrientationPortrait) {
-  // Column order is: | Column 0 | Column 1 |
-  // (We process the columns in reverse order because that makes
-  // extracting the digits from the value easier.)
-  for (int column_number = 1; column_number >= 0; column_number--) {
-    int slot_number = (row_number * 2) + column_number;
-    unload_digit_image_from_slot(slot_number);
-    if (!((value == 0) && (column_number == 0) && !show_first_leading_zero)) {
-      load_digit_image_into_slot(slot_number,deviceOrientation, value % 10);
+static void apply_face_slots(const int slots[FACE_SLOT_COUNT]) {
+  bool orientation_changed = (drawn_orientation != deviceOrientation);
+  for (int slot = 0; slot < FACE_SLOT_COUNT; slot++) {
+    if (!face_slot_needs_redraw(image_slot_state[slot], slots[slot], orientation_changed)) {
+      continue;
     }
-    value = value / 10;
-  };
-  };
-  if (deviceOrientation == UIInterfaceOrientationPortraitUpsideDown) {
-  // Column order is: | Column 0 | Column 1 |
-  // (We process the columns in reverse order because that makes
-  // extracting the digits from the value easier.)
-  for (int column_number = 0; column_number <= 1; column_number++) {
-    int slot_number = (row_number * 2) + column_number;
-    unload_digit_image_from_slot(slot_number);
-    if (!((value == 0) && (column_number == 1) && !show_first_leading_zero)) {
-      load_digit_image_into_slot(slot_number,deviceOrientation, value % 10);
+    unload_digit_image_from_slot(slot);
+    if (slots[slot] != FACE_DIGIT_BLANK) {
+      load_digit_image_into_slot(slot, deviceOrientation, slots[slot]);
     }
-    value = value / 10;
-  };
-  };
-}
-
-static unsigned short get_display_hour(unsigned short hour) {
-
-  if (clock_is_24h_style()) {
-    return hour;
   }
-
-  unsigned short display_hour = hour % 12;
-
-  // Converts "0" to "12"
-  return display_hour ? display_hour : 12;
-
+  drawn_orientation = deviceOrientation;
 }
 
 static void display_time(struct tm* pbltime) {
-
-  // TODO: Use `units_changed` and more intelligence to reduce
-  //       redundant digit unload/load?
   time_t now;
+  int slots[FACE_SLOT_COUNT];
   if (pbltime == NULL) {
     now = time(NULL);
     pbltime = localtime(&now);
   }
 
-  display_value(get_display_hour(pbltime->tm_hour), (deviceOrientation == UIInterfaceOrientationPortrait) ? 0 : 1, false);
-  display_value(pbltime->tm_min, (deviceOrientation == UIInterfaceOrientationPortrait) ? 1 : 0, true);
+  for (int slot = 0; slot < FACE_SLOT_COUNT; slot++) {
+    slots[slot] = FACE_DIGIT_UNCHANGED;
+  }
+  face_compose_time(slots, (unsigned short)pbltime->tm_hour,
+                    (unsigned short)pbltime->tm_min, deviceOrientation,
+                    clock_is_24h_style());
+  apply_face_slots(slots);
   //set_invert();
 
 }
 
-static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
-	
-	 AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
-     APP_LOG(APP_LOG_LEVEL_DEBUG, "got here ");
+static void update_orientation_from_accel(void) {
+  AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
 
   accel_service_peek(&accel);
-  // Insert UI code here
-	
-	     APP_LOG(APP_LOG_LEVEL_DEBUG, "accel data! %d %d %d ", accel.x,accel.y,accel.z);
+  if (accel.did_vibrate) {
+    return;
+  }
+  deviceOrientation = face_orientation_from_accel(accel.x, accel.y, accel.z, deviceOrientation);
+}
 
-		// Get the current device angle
-	//float xx = -accel.x;
-	//float yy = accel.y;
-	//float angle = atan2(yy, xx); 
-	//bool redraw = false;
-	
-	float angle = atan2_lookup	(accel.x,accel.y) / (TRIG_MAX_ANGLE/4) ;
-	
-     APP_LOG(APP_LOG_LEVEL_DEBUG, "angle! %d ", (int)angle * 100);
-	
-	if( angle >= -0.25 && angle < 0.75)
-	{
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "landscape left! ");
-		//if(deviceOrientation != UIInterfaceOrientationPortrait)
-		//{
-		//	deviceOrientation = UIInterfaceOrientationLandscapeLeft; // UIInterfaceOrientationPortrait;
-         //   redraw = true;
-		//}
-	}
-	else if(angle >= 0.5 && angle < 1.5)
-	{
-				APP_LOG(APP_LOG_LEVEL_DEBUG, "portrait up!  ");
-		//if(deviceOrientation != UIInterfaceOrientationLandscapeRight)
-		//{
-			deviceOrientation = UIInterfaceOrientationPortrait;
-			//redraw = true;
-		//}
-	}
-	else if(angle >= 1.5 && angle < 2.5)
-	{
-				APP_LOG(APP_LOG_LEVEL_DEBUG, "landscape right! ");
-		//if(deviceOrientation != UIInterfaceOrientationPortraitUpsideDown)
-		//{
-		//	deviceOrientation = UIInterfaceOrientationLandscapeRight  ;
-         //   redraw = true;
-		//}
-	}
-	else if(angle >= 2.1 || angle < 3.9)
-	{
-				APP_LOG(APP_LOG_LEVEL_DEBUG, "portrait down! ");
-		//if(deviceOrientation != UIInterfaceOrientationLandscapeLeft)
-		//{
-			deviceOrientation = UIInterfaceOrientationPortraitUpsideDown;
-          //  redraw = true;
-		//}
-	};
+static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
+  int previous_orientation = deviceOrientation;
 
-  	display_time(tick_time);
-	
-
+  update_orientation_from_accel();
+  if (face_should_refresh(previous_orientation, deviceOrientation,
+                          (units_changed & MINUTE_UNIT) != 0)) {
+    display_time(tick_time);
+  }
 }
 
 static void handle_accel(AccelData *accel_data, uint32_t num_samples) {
@@ -294,36 +189,26 @@ static void handle_accel(AccelData *accel_data, uint32_t num_samples) {
 }
 
 static void init() {
-	  window = window_create();
+  window = window_create();
   window_stack_push(window, true /* Animated */);
 
-	
-  // Init the layer for display the image
-  Layer *window_layer = window_get_root_layer(window);
-  //GRect bounds = layer_get_frame(window_layer);
-
-  
   deviceOrientation = UIInterfaceOrientationPortrait;
-  // Avoids a blank screen on watch start.
-  display_time(NULL);
-	
-  tick_timer_service_subscribe(SECOND_UNIT, handle_minute_tick);
-
- // timer = app_timer_register(100 /* milliseconds */, timer_callback, NULL);
- // Passing 0 to subscribe sets up the accelerometer for peeking
+  /* Peek only works after subscribe. Read once so the first frame matches
+     how the watch is being held. */
   accel_data_service_subscribe(0, NULL);
+  update_orientation_from_accel();
+  display_time(NULL);
 
+  tick_timer_service_subscribe(SECOND_UNIT, handle_tick);
 }
 
 static void deinit() {
-	  accel_data_service_unsubscribe();	
-	  tick_timer_service_unsubscribe();
+  accel_data_service_unsubscribe();
+  tick_timer_service_unsubscribe();
   for (int i = 0; i < TOTAL_IMAGE_SLOTS; i++) {
     unload_digit_image_from_slot(i);
   }
   window_destroy(window);
-  layer_destroy(layer);
-
 }
 int main(void) {
 
