@@ -302,6 +302,72 @@ static void test_vibe(void) {
 	expect_int("a negative minute does not buzz", face_should_vibe(-1, 5), 0);
 }
 
+static void expect_frame(const char *name, FaceRect frame, int x, int y, int w, int h) {
+	char label[80];
+
+	snprintf(label, sizeof label, "%s x", name);
+	expect_int(label, frame.x, x);
+	snprintf(label, sizeof label, "%s y", name);
+	expect_int(label, frame.y, y);
+	snprintf(label, sizeof label, "%s w", name);
+	expect_int(label, frame.w, w);
+	snprintf(label, sizeof label, "%s h", name);
+	expect_int(label, frame.h, h);
+}
+
+static void test_centered_time(void) {
+	FaceRect hour;
+	FaceRect minute;
+	FaceRect empty = {0, 0, 0, 0};
+
+	/* 144x168 watches, 42px Karmatic Arcade, 41px digit ink. */
+	hour = face_time_line_frame(144, 168, 41, 0);
+	minute = face_time_line_frame(144, 168, 41, 1);
+	expect_frame("rect hour ink", hour, 0, 41, 144, 41);
+	expect_frame("rect minute ink", minute, 0, 86, 144, 41);
+	expect_frame("rect hour draw box", face_time_draw_box(hour, 2, 9), -2, 32, 144, 50);
+	expect_frame("rect minute draw box", face_time_draw_box(minute, 2, 9), -2, 77, 144, 50);
+
+	/* Pebble Time Round, same 42px font. */
+	hour = face_time_line_frame(180, 180, 41, 0);
+	minute = face_time_line_frame(180, 180, 41, 1);
+	expect_frame("round hour ink", hour, 0, 47, 180, 41);
+	expect_frame("round minute ink", minute, 0, 92, 180, 41);
+
+	/* Pebble Time 2 and Pebble Round 2, 60px font, 59px digit ink. */
+	hour = face_time_line_frame(200, 228, 59, 0);
+	expect_frame("time 2 hour ink", hour, 0, 53, 200, 59);
+	expect_frame("time 2 hour draw box", face_time_draw_box(hour, 3, 13), -3, 40, 200, 72);
+	expect_frame("round 2 hour ink", face_time_line_frame(260, 260, 59, 0), 0, 69, 260, 59);
+
+	expect_frame("a line past the minutes is empty", face_time_line_frame(144, 168, 41, 2), 0, 0, 0, 0);
+	expect_frame("a zero screen is empty", face_time_line_frame(0, 168, 41, 0), 0, 0, 0, 0);
+	expect_frame("an empty ink box stays empty", face_time_draw_box(empty, 2, 9), 0, 0, 0, 0);
+}
+
+static void test_rotate_180(void) {
+	uint8_t color[6] = {1, 2, 3, 4, 5, 6};
+	uint8_t bits[8] = {0x80, 0, 0, 0, 0, 0, 0, 0};
+	uint8_t single[1] = {7};
+
+	face_rotate_pixels_180(color, 3, 2, 3, 8);
+	expect_int("8-bit 180 first pixel", color[0], 6);
+	expect_int("8-bit 180 middle pixel", color[1], 5);
+	expect_int("8-bit 180 last of first row", color[2], 4);
+	expect_int("8-bit 180 first of second row", color[3], 3);
+	expect_int("8-bit 180 last pixel", color[5], 1);
+
+	face_rotate_pixels_180(bits, 8, 2, 4, 1);
+	expect_int("1-bit source pixel clears", bits[0], 0);
+	expect_int("1-bit pixel lands on the opposite corner", bits[4], 0x01);
+
+	face_rotate_pixels_180(single, 1, 1, 1, 8);
+	expect_int("a single pixel stays", single[0], 7);
+	face_rotate_pixels_180(NULL, 3, 2, 3, 8);
+	face_rotate_pixels_180(color, 3, 2, 3, 4);
+	expect_int("an unsupported depth is left unchanged", color[0], 6);
+}
+
 int main(void) {
 	test_frames();
 	test_display_hour();
@@ -311,6 +377,8 @@ int main(void) {
 	test_orientation();
 	test_redraw_policy();
 	test_vibe();
+	test_centered_time();
+	test_rotate_180();
 
 	if (failures != 0) {
 		fprintf(stderr, "%d of %d checks failed\n", failures, tests_run);

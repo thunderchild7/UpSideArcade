@@ -80,4 +80,32 @@ bool face_should_vibe(int minute_of_hour, int vibe_minutes);
 /* Reload a slot only when its digit changes. A flip reuses the bitmap and rotates it. */
 bool face_slot_needs_redraw(int loaded_digit, int wanted_digit);
 
+/* Space between the centered hour line and the minute line. */
+#define FACE_TIME_LINE_GAP 4
+
+/*
+ * Full-width box for one centered line of the time.
+ * line_height is the height of the digit ink, not the font's em box.
+ * Line 0 is the hour, line 1 is the minutes. The pair is centered on the screen.
+ * A bad size or line index returns a zero rectangle.
+ */
+FaceRect face_time_line_frame(int screen_w, int screen_h, int line_height, int line_index);
+
+/*
+ * graphics_draw_text box that lands the digit ink on `ink`.
+ * pad_top is the blank rows above the digits inside the em box.
+ * pad_left is how far a centered advance box sits to the right of that ink.
+ * The width stays the line width, so center alignment shifts with the box.
+ * A zero ink rectangle is returned unchanged.
+ */
+FaceRect face_time_draw_box(FaceRect ink, int pad_left, int pad_top);
+
+/*
+ * Turn a framebuffer 180 degrees so the centered time stays readable upside down.
+ * bits_per_pixel is 1 or 8. A 1-bit row stores the leftmost pixel in the high bit.
+ * Any other depth, a null buffer, or a non-positive size is left unchanged.
+ */
+void face_rotate_pixels_180(uint8_t *pixels, int width, int height,
+		int bytes_per_row, int bits_per_pixel);
+
 #endif

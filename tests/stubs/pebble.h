@@ -52,6 +52,7 @@ typedef enum {
 #define RESOURCE_ID_IMAGE_NUM_7 107
 #define RESOURCE_ID_IMAGE_NUM_8 108
 #define RESOURCE_ID_IMAGE_NUM_9 109
+#define RESOURCE_ID_FONT_KARMATIC_42 200
 
 typedef enum {
   GColorClear = 0,
@@ -59,14 +60,74 @@ typedef enum {
   GColorWhite = 2
 } GColor;
 
+typedef struct GContext GContext;
+typedef struct FontInfo FontInfo;
+typedef FontInfo *GFont;
+typedef uint32_t ResHandle;
+
+typedef enum {
+  GBitmapFormat1Bit = 0,
+  GBitmapFormat8Bit,
+  GBitmapFormat1BitPalette,
+  GBitmapFormat2BitPalette,
+  GBitmapFormat4BitPalette,
+  GBitmapFormat8BitCircular
+} GBitmapFormat;
+
+typedef struct {
+  uint8_t *data;
+  int16_t min_x;
+  int16_t max_x;
+} GBitmapDataRowInfo;
+
+typedef enum {
+  GTextOverflowModeWordWrap,
+  GTextOverflowModeTrailingEllipsis,
+  GTextOverflowModeFill
+} GTextOverflowMode;
+
+typedef enum {
+  GTextAlignmentLeft,
+  GTextAlignmentCenter,
+  GTextAlignmentRight
+} GTextAlignment;
+
+typedef uint32_t GCornerMask;
+#define GCornerNone 0
+
+typedef void (*LayerUpdateProc)(Layer *layer, GContext *ctx);
+
 typedef struct RotBitmapLayer RotBitmapLayer;
 
 Window *window_create(void);
 void window_stack_push(Window *window, bool animated);
 void window_destroy(Window *window);
+void window_set_background_color(Window *window, GColor color);
 Layer *window_get_root_layer(Window *window);
 
+ResHandle resource_get_handle(uint32_t resource_id);
+GFont fonts_load_custom_font(ResHandle handle);
+void fonts_unload_custom_font(GFont font);
+
+void graphics_context_set_antialiased(GContext *ctx, bool enable);
+void graphics_context_set_fill_color(GContext *ctx, GColor color);
+void graphics_context_set_text_color(GContext *ctx, GColor color);
+void graphics_fill_rect(GContext *ctx, GRect rect, uint16_t corner_radius, GCornerMask corner_mask);
+void graphics_draw_text(GContext *ctx, const char *text, GFont const font, const GRect box,
+		int overflow_mode, int alignment, void *text_attributes);
+GBitmap *graphics_capture_frame_buffer(GContext *ctx);
+bool graphics_release_frame_buffer(GContext *ctx, GBitmap *buffer);
+
+uint8_t *gbitmap_get_data(const GBitmap *bitmap);
+GRect gbitmap_get_bounds(const GBitmap *bitmap);
+uint16_t gbitmap_get_bytes_per_row(const GBitmap *bitmap);
+GBitmapFormat gbitmap_get_format(const GBitmap *bitmap);
+GBitmapDataRowInfo gbitmap_get_data_row_info(const GBitmap *bitmap, uint16_t y);
+
 void layer_add_child(Layer *parent, Layer *child);
+Layer *layer_create(GRect frame);
+void layer_set_update_proc(Layer *layer, LayerUpdateProc update_proc);
+GRect layer_get_bounds(const Layer *layer);
 void layer_set_frame(Layer *layer, GRect frame);
 GRect layer_get_frame(const Layer *layer);
 void layer_set_bounds(Layer *layer, GRect bounds);

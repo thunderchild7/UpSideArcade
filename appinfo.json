@@ -13,61 +13,33 @@
                 "type": "bitmap"
             },
             {
-                "file": "images/num_0.png",
-                "name": "IMAGE_NUM_0",
-                "type": "bitmap"
+                "characterRegex": "[0-9]",
+                "file": "fonts/karmatic-arcade.ttf",
+                "name": "FONT_KARMATIC_42",
+                "pixelHeight": 42,
+                "targetPlatforms": ["aplite", "basalt", "chalk", "diorite", "flint"],
+                "type": "font"
             },
             {
-                "file": "images/num_1.png",
-                "name": "IMAGE_NUM_1",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/num_2.png",
-                "name": "IMAGE_NUM_2",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/num_3.png",
-                "name": "IMAGE_NUM_3",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/num_4.png",
-                "name": "IMAGE_NUM_4",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/num_5.png",
-                "name": "IMAGE_NUM_5",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/num_6.png",
-                "name": "IMAGE_NUM_6",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/num_7.png",
-                "name": "IMAGE_NUM_7",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/num_8.png",
-                "name": "IMAGE_NUM_8",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/num_9.png",
-                "name": "IMAGE_NUM_9",
-                "type": "bitmap"
+                "characterRegex": "[0-9]",
+                "file": "fonts/karmatic-arcade.ttf",
+                "name": "FONT_KARMATIC_60",
+                "pixelHeight": 60,
+                "targetPlatforms": ["emery", "gabbro"],
+                "type": "font"
             }
         ]
     },
     "sdkVersion": "3",
     "shortName": "Up Side Arcade",
     "targetPlatforms": [
-        "basalt"
+        "aplite",
+        "basalt",
+        "chalk",
+        "diorite",
+        "emery",
+        "flint",
+        "gabbro"
     ],
     "uuid": "b64b4470-ce6d-11e3-9c1a-0800200c9a66",
     "versionCode": 2,
