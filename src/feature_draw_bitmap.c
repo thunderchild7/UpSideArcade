@@ -31,6 +31,15 @@ static char minute_text[3];
 #define TIME_INK_PAD_LEFT 2
 #endif
 
+/* Color watches are green on black. Black-and-white watches stay black on white. */
+#if defined(PBL_COLOR)
+#define FACE_BACKGROUND GColorBlack
+#define FACE_FOREGROUND GColorGreen
+#else
+#define FACE_BACKGROUND GColorWhite
+#define FACE_FOREGROUND GColorBlack
+#endif
+
 static void format_digits(char *out, int tens, int units) {
 	char *cursor = out;
 
@@ -100,9 +109,9 @@ static void time_layer_update(Layer *layer, GContext *ctx) {
 	GBitmap *framebuffer;
 
 	graphics_context_set_antialiased(ctx, false);
-	graphics_context_set_fill_color(ctx, GColorWhite);
+	graphics_context_set_fill_color(ctx, FACE_BACKGROUND);
 	graphics_fill_rect(ctx, bounds, 0, GCornerNone);
-	graphics_context_set_text_color(ctx, GColorBlack);
+	graphics_context_set_text_color(ctx, FACE_FOREGROUND);
 	graphics_draw_text(ctx, hour_text, time_font,
 			GRect(hour_line.x, hour_line.y, hour_line.w, hour_line.h),
 			GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
@@ -173,7 +182,7 @@ static void init(void) {
 	Layer *root;
 
 	window = window_create();
-	window_set_background_color(window, GColorWhite);
+	window_set_background_color(window, FACE_BACKGROUND);
 	window_stack_push(window, true /* Animated */);
 
 	time_font = fonts_load_custom_font(resource_get_handle(TIME_FONT));
